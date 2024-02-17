@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
 
+
 export const httpServer = http.createServer(function (req, res) {
     const __dirname = path.resolve(path.dirname(''));
     const file_path = __dirname + (req.url === '/' ? '/front/index.html' : '/front' + req.url);
@@ -11,7 +12,7 @@ export const httpServer = http.createServer(function (req, res) {
             res.end(JSON.stringify(err));
             return;
         }
-        res.writeHead(200);
+        res.writeHead(200, undefined, "Cache-Control: no-store"); //debug
         res.end(data);
     });
 });
