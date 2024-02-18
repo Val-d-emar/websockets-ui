@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { db_users, User } from "../db/db.ts"
-export const reg_user = (username: string, passwd: string, userId = '') => {
+export const reg_user = (username: string, passwd: string, userId: string) => {
     let res: string;
-    if (userId === '') {
-        userId = createHash('sha256').update(`${passwd}${username}`).digest('hex');
-    }
+    // if (userId === '') {
+    //     userId = createHash('sha256').update(`${passwd}${username}`).digest('hex');
+    // }
     let user = new User(
         username,
         passwd,
@@ -51,19 +51,19 @@ export const update_room = (uid: string) => {
     const room =
     {
         type: "update_room",
-        data:
+        data:JSON.stringify(
             [
                 {
                     roomId: 0,
                     roomUsers:
                         [
                             {
-                                name: `${db_users.get(uid)?.username}`,
+                                name: `${db_users.get(uid)!.name}`,
                                 index: 1,
                             }
                         ],
                 },
-            ],
+            ]),
         id: 0,
     }
     return JSON.stringify(room);
@@ -73,13 +73,13 @@ export const update_winners = (uid: string) => {
     const winners =
     {
         type: "update_winners",
-        data:
+        data: JSON.stringify(
             [
                 {
-                    name: `${db_users.get(uid)?.username}`,
+                    name: `${db_users.get(uid)!.name}`,
                     wins: 0,
                 }
-            ],
+            ]),
         id: 0,
     }
     return JSON.stringify(winners);

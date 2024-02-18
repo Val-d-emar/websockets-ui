@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
 import { reg_user, update_room, update_winners } from '../game/game';
+import { db_users } from '../db/db';
 
 export const wss = new WebSocketServer({ port: 3000, clientTracking: true });
 
@@ -58,13 +59,18 @@ wss.on('connection', function connection(ws: WebSocket, request: any) {//, clien
       }
       switch (res.type) {
         case 'reg':
-          userId = createHash('sha256').update(`${res.data.passwd}${res.data.username}`).digest('hex');
-          ws.send(reg_user(res.data.username, res.data.password, userId));
+          userId = createHash('sha256').update(`${res.data.name}${res.data.passwd}`).digest('hex');
+          ws.send(reg_user(res.data.name, res.data.password, userId));
           map.set(session_ID, userId);
           break;
         case 'create_room':
-          ws.send(update_room(userId));
-          ws.send(update_winners(userId))
+          if (userId !== '') {
+            console.log(`userId is ${userId}`);
+            console.log(`username is ${db_users.get(userId)?.name}`);
+            console.log(`users =`, db_users.get());
+            ws.send(update_room(userId))
+            ws.send(update_winners(userId))
+          } else console.log('Oops! userId is empty!');
           break;
       }
       console.log(res)

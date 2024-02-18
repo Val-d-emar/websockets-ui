@@ -1,8 +1,8 @@
 import { randomInt } from "node:crypto";
 
-export class Record {    
+export class Record {
 }
-export class Room extends Record{
+export class Room extends Record {
     constructor(
         public roomId: number = randomInt(Number.MAX_SAFE_INTEGER),
         public roomUsers: Map<string, any> = new Map<string, any>()
@@ -17,31 +17,32 @@ export class Room extends Record{
             Object.keys(room).length == 2;
     }
 }
-export class User extends Record{
-    public session: string;
+export class User extends Record {
+    public name: string;
+    public password: string;
+    public id: string;
     public game: Map<string, any>;
     constructor(
-        public username: string,
-        public password: string,
-        session?: string,
+        name?: string,
+        password?: string,
+        id?: string,
         game?: Map<string, any>
     ) {
         super();
-        if (session === undefined) this.session = ''
-        else this.session = session;
-
-        if (game === undefined) this.game = new Map<string, any>()
-        else this.game = game;
+        this.name = (name === undefined) ? `User${randomInt(100)}` : name;
+        this.password = (password === undefined) ? '' : password;
+        this.id = (id === undefined) ? '' : id;
+        this.game = (game === undefined) ? new Map<string, any>() : game;
     }
     static check(user: Object) {
-        return ('username' in user) &&
+        return ('name' in user) &&
             ('password' in user) &&
             ('game' in user) &&
-            ('session' in user) &&
-            (typeof user.username === 'string') &&
+            ('id' in user) &&
+            (typeof user.name === 'string') &&
             (typeof user.password === 'string') &&
             (user.game instanceof Map) &&
-            (typeof user.session === 'string') &&
+            (typeof user.id === 'string') &&
             Object.keys(user).length <= 4;
     }
 }
@@ -51,8 +52,8 @@ export class DB_api<T extends Record> {
     constructor() {
         this._db = new Map<string, T>();
     }
-    public get(uid: string) {
-        return this._db.get(uid);
+    public get(uid?: string) {
+        return uid === undefined ? this._db : this._db.get(uid);
     }
     public add(uid: string, record: T) {
         this._db.set(uid, record)
@@ -60,7 +61,7 @@ export class DB_api<T extends Record> {
     }
     public update(uid: string, record: T) {
         if (this.get(uid)) {
-            // record.session = uid;
+            // record.id = uid;
             this._db.set(uid, record);
             return this._db.get(uid);
         }
