@@ -35,7 +35,7 @@ export class Game extends Record {
 export class Room extends Record {
   constructor(
     public roomId: number = randomInt(maxRnd),
-    public roomUsers: Map<string, User> = new Map<string, User>(),
+    public roomUsers: Map<number, User> = new Map<number, User>(),
   ) {
     super();
   }
@@ -52,19 +52,19 @@ export class Room extends Record {
 export class User extends Record {
   public name: string;
   public password: string;
-  public id: string;
-  public game: Map<string, Record>;
+  public id: number;
+  public game: Map<number, Record>;
   constructor(
     name?: string,
     password?: string,
-    id?: string,
-    game?: Map<string, Record>,
+    id?: number,
+    game?: Map<number, Record>,
   ) {
     super();
     this.name = name === undefined ? `User${randomInt(maxRnd)}` : name;
     this.password = password === undefined ? "" : password;
-    this.id = id === undefined ? "" : id;
-    this.game = game === undefined ? new Map<string, Record>() : game;
+    this.id = id === undefined ? 0 : id;
+    this.game = game === undefined ? new Map<number, Record>() : game;
   }
   static check(user: object) {
     return (
@@ -109,7 +109,7 @@ export class DB_api<K extends string | number, T extends Record> {
   }
 }
 
-export const db_users = new DB_api<string, User>();
+export const db_users = new DB_api<number, User>();
 export const db_rooms = new DB_api<number, Room>();
-export const db_games = new DB_api<string, Game>();
-export const db_winners = new DB_api<string, Winner>();
+export const db_games = new DB_api<number, Game>();
+export const db_winners = new DB_api<number, Winner>();

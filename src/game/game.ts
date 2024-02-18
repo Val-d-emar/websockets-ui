@@ -1,7 +1,6 @@
 // import { createHash } from "node:crypto";
 import { randomInt, randomUUID } from "node:crypto";
 import {
-  db_games,
   db_rooms,
   db_users,
   db_winners,
@@ -11,7 +10,7 @@ import {
   Winner,
 } from "../db/db.ts";
 import WebSocket from "ws";
-export const reg_user = (username: string, passwd: string, userId: string) => {
+export const reg_user = (username: string, passwd: string, userId: number) => {
   let res: string;
   // if (userId === '') {
   //     userId = createHash('sha256').update(`${passwd}${username}`).digest('hex');
@@ -44,7 +43,7 @@ export const reg_user = (username: string, passwd: string, userId: string) => {
   return res;
 };
 
-export const create_room = (uid: string) => {
+export const create_room = (uid: number) => {
   const room = new Room();
   const user = db_users.get(uid);
   if (user !== undefined) {
@@ -57,7 +56,7 @@ export const create_room = (uid: string) => {
   return room;
 };
 
-export const update_rooms = (sockets: Map<string, WebSocket>) => {
+export const update_rooms = (sockets: Map<number, WebSocket>) => {
   const r: object[] = [];
 
   db_rooms.get_all().forEach((room) => {
@@ -95,9 +94,9 @@ export const update_rooms = (sockets: Map<string, WebSocket>) => {
 };
 
 export const update_room = (
-  uid: string,
+  uid: number,
   rid: number,
-  sockets: Map<string, WebSocket>,
+  sockets: Map<number, WebSocket>,
 ) => {
   const room = db_rooms.get(rid);
   if (room === undefined) {
@@ -115,8 +114,8 @@ export const update_room = (
 };
 
 export const update_winners = (
-  uid: string,
-  sockets: Map<string, WebSocket>,
+  uid: number,
+  sockets: Map<number, WebSocket>,
 ) => {
   const user = db_users.get(uid);
   if (user !== undefined) {
@@ -150,9 +149,9 @@ export const update_winners = (
 };
 
 export const add_users_to_room = (
-  uid: string,
+  uid: number,
   indexRoom: number,
-  sockets: Map<string, WebSocket>,
+  sockets: Map<number, WebSocket>,
 ) => {
   const room = db_rooms.get(indexRoom);
   if (room === undefined) {
@@ -194,8 +193,8 @@ export const add_users_to_room = (
 };
 
 export const del_users_rooms = (
-  uid: string,
-  sockets: Map<string, WebSocket>,
+  uid: number,
+  sockets: Map<number, WebSocket>,
 ) => {
   const keys: number[] = [];
   db_rooms.get_all().forEach((room, rid) => {
