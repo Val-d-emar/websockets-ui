@@ -1,17 +1,14 @@
-import { createHash } from 'node:crypto';
-import { db_users, User } from './db';
+import { createHash } from "node:crypto";
+import { db_users, User } from "./db";
 
-describe('DB tests', () => {
-
-  const passwd = 'hacker'
-  const username = 'Ivan Petrov'
-  test('test 1', async () => {
-    const userId = createHash('sha256').update(`${passwd}${username}`).digest('hex');
-    let user1 = new User(
-      username,
-      passwd,
-      userId,
-    );
+describe("DB tests", () => {
+  const passwd = "hacker";
+  const username = "Ivan Petrov";
+  test("test 1", async () => {
+    const userId = createHash("sha256")
+      .update(`${passwd}${username}`)
+      .digest("hex");
+    const user1 = new User(username, passwd, userId);
     expect.assertions(3);
     expect(db_users.add(userId, user1)).toBe(user1);
     expect(db_users.get(userId)).toBe(user1);
@@ -19,7 +16,7 @@ describe('DB tests', () => {
   });
 
   // test('test 2', () => {
-    
+
   // });
 
   // test('test 3', () => {
