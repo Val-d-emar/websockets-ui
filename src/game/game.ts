@@ -12,12 +12,9 @@ import {
   User,
   Winner,
 } from "../db/db.ts";
-import WebSocket from "ws";
+import { WebSocketLive } from "../ws/wsock";
 export const reg_user = (username: string, passwd: string, userId: number) => {
   let res: string;
-  // if (userId === '') {
-  //     userId = createHash('sha256').update(`${passwd}${username}`).digest('hex');
-  // }
   const user = new User(username, passwd, userId);
   try {
     res = JSON.stringify({
@@ -59,7 +56,7 @@ export const create_room = (uid: number) => {
   return room;
 };
 
-export const update_rooms = (sockets: Map<number, WebSocket>) => {
+export const update_rooms = (sockets: Map<number, WebSocketLive>) => {
   const r: object[] = [];
 
   db_rooms.get_all().forEach((room) => {
@@ -89,7 +86,7 @@ export const update_rooms = (sockets: Map<number, WebSocket>) => {
     id: 0,
   });
   sockets.forEach(function each(ws) {
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws.readyState === WebSocketLive.OPEN) {
       ws.send(answer);
     }
   });
@@ -99,7 +96,7 @@ export const update_rooms = (sockets: Map<number, WebSocket>) => {
 export const update_room = (
   uid: number,
   rid: number,
-  sockets: Map<number, WebSocket>,
+  sockets: Map<number, WebSocketLive>,
 ) => {
   const room = db_rooms.get(rid);
   if (room === undefined) {
@@ -118,7 +115,7 @@ export const update_room = (
 
 export const update_winners = (
   uid: number,
-  sockets: Map<number, WebSocket>,
+  sockets: Map<number, WebSocketLive>,
 ) => {
   const user = db_users.get(uid);
   if (user !== undefined) {
@@ -144,7 +141,7 @@ export const update_winners = (
     id: 0,
   });
   sockets.forEach(function each(ws) {
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws.readyState === WebSocketLive.OPEN) {
       ws.send(answer);
     }
   });
@@ -154,7 +151,7 @@ export const update_winners = (
 export const add_users_to_room = (
   uid: number,
   indexRoom: number,
-  sockets: Map<number, WebSocket>,
+  sockets: Map<number, WebSocketLive>,
 ) => {
   const room = db_rooms.get(indexRoom);
   if (room === undefined) {
@@ -178,7 +175,7 @@ export const add_users_to_room = (
   room.roomUsers.forEach((user, uid) => {
     const ws = sockets.get(uid);
     if (ws !== undefined) {
-      if (ws.readyState === WebSocket.OPEN) {
+      if (ws.readyState === WebSocketLive.OPEN) {
         const answer = JSON.stringify({
           type: "create_game", //send for both players in the room
           data: JSON.stringify({
@@ -197,7 +194,7 @@ export const add_users_to_room = (
 
 export const del_users_rooms = (
   uid: number,
-  sockets: Map<number, WebSocket>,
+  sockets: Map<number, WebSocketLive>,
 ) => {
   const keys: number[] = [];
   db_rooms.get_all().forEach((room, rid) => {
@@ -219,7 +216,7 @@ export const add_ships = (
   userId: number,
   RoomId: number,
   data: object,
-  sockets: Map<number, WebSocket>,
+  sockets: Map<number, WebSocketLive>,
 ) => {
   if (
     "gameId" in data &&
@@ -237,6 +234,8 @@ export const add_ships = (
     if (game === undefined) {
       game = new Game(RoomId, gameId);
       db_games.add(gameId, game);
+      const room = db_rooms.get(RoomId);
+      if (room !== undefined) room.game = game;
     }
     game.players.set(userId, player);
 
@@ -244,7 +243,7 @@ export const add_ships = (
       game.players.forEach((_, uid) => {
         const ws = sockets.get(uid);
         if (ws !== undefined) {
-          if (ws.readyState === WebSocket.OPEN) {
+          if (ws.readyState === WebSocketLive.OPEN) {
             const answer = JSON.stringify({
               type: "start_game", //send for both players in the room
               data: JSON.stringify({
@@ -258,29 +257,124 @@ export const add_ships = (
           }
         }
       });
+      turn(gameId, sockets);
     }
-
-    //   {
-    //     type: "start_game",
-    //     data:
-    //         {
-    //             ships:
-    //                 [
-    //                     {
-    //                         position: {
-    //                             x: <number>,
-    //                             y: <number>,
-    //                         },
-    //                         direction: <boolean>,
-    //                         length: <number>,
-    //                         type: "small"|"medium"|"large"|"huge",
-    //                     }
-    //                 ],
-    //             currentPlayerIndex: <number>, /* id of the player in the current game session, who have sent his ships */
-    //         },
-    //     id: 0,
-    // }
   } else {
     console.log("Error parsing ships");
   }
+};
+
+export const attack = (
+  // userId: number,
+  data: object,
+  sockets: Map<number, WebSocketLive>,
+) => {
+  if (
+    "gameId" in data &&
+    typeof data.gameId === "number" &&
+    "indexPlayer" in data &&
+    typeof data.indexPlayer === "number" &&
+    "x" in data &&
+    typeof data.x === "number" &&
+    "y" in data &&
+    typeof data.y === "number"
+  ) {
+    const gameId = data.gameId;
+    const game = db_games.get(gameId);
+    const x = data.x;
+    const y = data.y;
+    const indexPlayer = data.indexPlayer;
+    if (game === undefined) {
+      console.log("Error finding game");
+      return;
+    }
+
+    if (game.turn != indexPlayer) return; //it isn't your step
+
+    let shot = ""; //"miss"|"killed"|"shot",
+    if (game.players.size === 2) {
+      game.players.forEach((player, uid) => {
+        if (uid != indexPlayer) {
+          //alien
+          const point = player.field[y][x];
+          if (point < 99) {
+            //is ship "killed"|"shot",
+            if (player.ships[point].length <= 1) {
+              shot = "killed";
+              player.ships[point].length = 0;
+            } else {
+              shot = "shot";
+              player.ships[point].length--;
+            }
+          } else {
+            shot = "miss";
+            // player.field[y][x] = 100 + point;
+          }
+        }
+      });
+      game.players.forEach((player, uid) => {
+        const ws = sockets.get(uid);
+        if (ws !== undefined) {
+          if (ws.readyState === WebSocketLive.OPEN) {
+            const answer = JSON.stringify({
+              type: "attack", //send for both players in the room
+              data: JSON.stringify({
+                position: {
+                  x: x,
+                  y: y,
+                },
+                currentPlayer: indexPlayer, // id of the player in the current game session
+                status: shot,
+              }),
+              id: 0,
+            });
+            ws.send(answer);
+          }
+        }
+      });
+      turn(gameId, sockets, shot === "miss" ? true : false);
+    } else {
+      console.log("Error parsing data");
+      return;
+    }
+  }
+};
+
+export const turn = (
+  gameId: number,
+  sockets: Map<number, WebSocketLive>,
+  turning = true,
+) => {
+  const game = db_games.get(gameId);
+  if (game === undefined) {
+    console.log("Error finding game");
+    return;
+  }
+
+  if (turning) {
+    for (const uid of game.players.keys()) {
+      // game.players.forEach((_, uid) => {
+      if (uid != game.turn) {
+        game.turn = uid;
+        break;
+      }
+    }
+    // );
+  }
+
+  game.players.forEach((_, uid) => {
+    const ws = sockets.get(uid);
+    if (ws !== undefined) {
+      if (ws.readyState === WebSocketLive.OPEN) {
+        const answer = JSON.stringify({
+          type: "turn", //send for both players in the room
+          data: JSON.stringify({
+            currentPlayer: game.turn, // id of the player in the current game session
+          }),
+          id: 0,
+        });
+        ws.send(answer);
+      }
+    }
+  });
 };

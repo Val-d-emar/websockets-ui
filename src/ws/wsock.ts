@@ -8,6 +8,7 @@ import {
   update_room,
   del_users_rooms,
   add_ships,
+  attack,
 } from "../game/game";
 import { db_users, maxRnd } from "../db/db";
 
@@ -74,16 +75,13 @@ wss.on("connection", function connection(ws: WebSocketLive, request: object) {
           }
         case "add_user_to_room":
           ws.RoomId = res.data.indexRoom;
-          console.log(`userId is ${ws.userId}`);
-          console.log(`username is ${db_users.get(ws.userId)?.name}`);
-          // console.log(`users =`, db_users.get_all());
           add_users_to_room(ws.userId, ws.RoomId, sockets);
           break;
         case "add_ships":
-          console.log(`userId is ${ws.userId}`);
-          console.log(`username is ${db_users.get(ws.userId)?.name}`);
-          // console.log(`users =`, db_users.get_all());
           add_ships(ws.userId, ws.RoomId, res.data, sockets);
+          break;
+        case "attack":
+          attack(res.data, sockets);
           break;
       }
       console.log(res);

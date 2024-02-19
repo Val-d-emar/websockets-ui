@@ -45,10 +45,11 @@ export class Ship {
 
 export class Player {
   public ships: Ship[] = [];
+  public field: number[][] = [];
   constructor(
     public indexPlayer: number,
     ships: object,
-    public field?: number[][],
+    field?: number[][],
   ) {
     if (ships instanceof Array) {
       ships.forEach((s) => {
@@ -56,7 +57,6 @@ export class Player {
       });
     } else throw new Error("Wrong ships format");
     if (field === undefined) {
-      this.field = [];
       for (let i = 0; i < 10; i++) {
         this.field.push([]);
         for (let j = 0; j < 10; j++) {
@@ -83,8 +83,14 @@ export class Game extends Record {
     public roomId: number,
     public idGame: number = randomInt(maxRnd),
     public players: Map<number, Player> = new Map<number, Player>(),
+    public turn: number = 0,
   ) {
     super();
+    if (players.size > 0) {
+      players.forEach((_, key) => {
+        this.turn = key;
+      });
+    }
   }
   static check(game: object) {
     return (
@@ -103,6 +109,7 @@ export class Room extends Record {
   constructor(
     public roomId: number = randomInt(maxRnd),
     public roomUsers: Map<number, User> = new Map<number, User>(),
+    public game: Game = new Game(roomId),
   ) {
     super();
   }
