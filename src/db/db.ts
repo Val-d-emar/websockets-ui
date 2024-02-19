@@ -11,11 +11,78 @@ export class Winner extends Record {
     super();
   }
 }
+
+export class Point {
+  public x: number = 0;
+  public y: number = 0;
+  constructor(obj?: object) {
+    if (obj) {
+      this.x = "x" in obj ? Number(obj.x) : 0;
+      this.x = "y" in obj ? Number(obj.y) : 0;
+    }
+  }
+}
+
+export enum shipType {
+  small = "small",
+  medium = "medium",
+  large = "large",
+  huge = "huge",
+}
+
+export class Ship {
+  public position: Point = new Point();
+  public direction: boolean = true;
+  public length: number = 1;
+  public type: shipType = shipType.small;
+  constructor(obj: object) {
+    this.position = "position" in obj ? new Point(obj.position!) : new Point();
+    this.direction = "direction" in obj ? Boolean(obj.direction) : true;
+    this.length = "length" in obj ? Number(obj.length) : 1;
+    this.type = "type" in obj ? (obj.type as shipType) : shipType.small;
+  }
+}
+
+export class Player {
+  public ships: Ship[] = [];
+  constructor(
+    public indexPlayer: number,
+    ships: object,
+    public field?: number[][],
+  ) {
+    if (ships instanceof Array) {
+      ships.forEach((s) => {
+        this.ships.push(new Ship(s));
+      });
+    } else throw new Error("Wrong ships format");
+    if (field === undefined) {
+      this.field = [];
+      for (let i = 0; i < 10; i++) {
+        this.field.push([]);
+        for (let j = 0; j < 10; j++) {
+          this.field[i].push(99);
+        }
+      }
+      ships.forEach((s, ind) => {
+        if (!s.direction) {
+          for (let i = s.position.x; i < s.position.x + s.length; i++) {
+            this.field![s.position.y][i] = ind;
+          }
+        } else {
+          for (let i = s.position.y; i < s.position.y + s.length; i++) {
+            this.field![i][s.position.x] = ind;
+          }
+        }
+      });
+    }
+  }
+}
+
 export class Game extends Record {
   constructor(
     public roomId: number,
     public idGame: number = randomInt(maxRnd),
-    public gamers: Map<number, User> = new Map<number, User>(),
+    public players: Map<number, Player> = new Map<number, Player>(),
   ) {
     super();
   }
@@ -23,10 +90,10 @@ export class Game extends Record {
     return (
       "roomId" in game &&
       "idGame" in game &&
-      "gamers" in game &&
+      "players" in game &&
       typeof game.roomId === "number" &&
       typeof game.idGame === "number" &&
-      game.gamers instanceof Map &&
+      game.players instanceof Map &&
       Object.keys(game).length == 3
     );
   }
@@ -75,7 +142,7 @@ export class User extends Record {
       typeof user.name === "string" &&
       typeof user.password === "string" &&
       user.game instanceof Map &&
-      typeof user.id === "string" &&
+      typeof user.id === "number" &&
       Object.keys(user).length <= 4
     );
   }
@@ -98,7 +165,6 @@ export class DB_api<K extends string | number, T extends Record> {
   }
   public update(uid: K, record: T) {
     if (this.get(uid)) {
-      // record.id = uid;
       this._db.set(uid, record);
       return this._db.get(uid);
     }

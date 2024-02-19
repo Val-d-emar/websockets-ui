@@ -1,4 +1,4 @@
-import { createHash, randomInt, randomUUID } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 import { WebSocket, WebSocketServer } from "ws";
 import {
   reg_user,
@@ -7,11 +7,14 @@ import {
   create_room,
   update_room,
   del_users_rooms,
+  add_ships,
 } from "../game/game";
 import { db_users, maxRnd } from "../db/db";
 
 export class WebSocketLive extends WebSocket {
   isAlive = false;
+  userId = randomInt(maxRnd);
+  RoomId = 0;
 }
 export const wss = new WebSocketServer({ port: 3000, clientTracking: true });
 
@@ -27,13 +30,7 @@ const interval = setInterval(function ping() {
 
 wss.on("connection", function connection(ws: WebSocketLive, request: object) {
   ws.isAlive = true;
-  // let userId =
-  //   "rawHeaders" in request
-  //     ? createHash("shake256", { outputLength: 4 })
-  //       .update(JSON.stringify(request.rawHeaders))
-  //       .digest("hex")
-  //     : `${randomUUID}`;
-  let userId =
+  ws.userId =
     "rawHeaders" in request
       ? Number.parseInt(
           createHash("shake256", { outputLength: 4 })
@@ -42,8 +39,6 @@ wss.on("connection", function connection(ws: WebSocketLive, request: object) {
           16,
         )
       : randomInt(maxRnd);
-  // let userId = randomInt(maxRnd);
-  // console.log(request);
 
   ws.on("error", console.error);
   ws.on("pong", function a() {
@@ -51,7 +46,7 @@ wss.on("connection", function connection(ws: WebSocketLive, request: object) {
   });
 
   ws.on("message", function message(msg) {
-    console.log(`Received message ${msg} from user ${userId}`);
+    console.log(`Received message ${msg} from user ${ws.userId}`);
     try {
       const res = JSON.parse(msg.toString());
       if (typeof res.data === "string" && res.data.length > 1) {
@@ -59,32 +54,36 @@ wss.on("connection", function connection(ws: WebSocketLive, request: object) {
       }
       switch (res.type) {
         case "reg":
-          // userId = createHash("shake256", { outputLength: 4 })
-          //   .update(`${res.data.name}${res.data.passwd}`)
-          //   .digest("hex");
-          userId = Number.parseInt(
+          ws.userId = Number.parseInt(
             createHash("shake256", { outputLength: 4 })
               .update(`${res.data.name}${res.data.passwd}`)
               .digest("hex"),
             16,
           );
-          ws.send(reg_user(res.data.name, res.data.password, userId));
-          sockets.set(userId, ws);
+          ws.send(reg_user(res.data.name, res.data.password, ws.userId));
+          sockets.set(ws.userId, ws);
           break;
         case "create_room":
-          console.log(`userId is ${userId}`);
-          console.log(`username is ${db_users.get(userId)?.name}`);
-          console.log(`users =`, db_users.get_all());
-          const rid = create_room(userId);
+          console.log(`userId is ${ws.userId}`);
+          console.log(`username is ${db_users.get(ws.userId)?.name}`);
+          // console.log(`users =`, db_users.get_all());
+          const rid = create_room(ws.userId);
           if (rid) {
-            update_room(userId, rid.roomId, sockets);
-            update_winners(userId, sockets);
+            update_room(ws.userId, rid.roomId, sockets);
+            update_winners(ws.userId, sockets);
           }
         case "add_user_to_room":
-          console.log(`userId is ${userId}`);
-          console.log(`username is ${db_users.get(userId)?.name}`);
-          console.log(`users =`, db_users.get_all());
-          add_users_to_room(userId, res.data.indexRoom, sockets);
+          ws.RoomId = res.data.indexRoom;
+          console.log(`userId is ${ws.userId}`);
+          console.log(`username is ${db_users.get(ws.userId)?.name}`);
+          // console.log(`users =`, db_users.get_all());
+          add_users_to_room(ws.userId, ws.RoomId, sockets);
+          break;
+        case "add_ships":
+          console.log(`userId is ${ws.userId}`);
+          console.log(`username is ${db_users.get(ws.userId)?.name}`);
+          // console.log(`users =`, db_users.get_all());
+          add_ships(ws.userId, ws.RoomId, res.data, sockets);
           break;
       }
       console.log(res);
@@ -95,7 +94,7 @@ wss.on("connection", function connection(ws: WebSocketLive, request: object) {
 
   ws.on("close", function () {
     clearInterval(interval);
-    sockets.delete(userId);
-    del_users_rooms(userId, sockets);
+    sockets.delete(ws.userId);
+    del_users_rooms(ws.userId, sockets);
   });
 });

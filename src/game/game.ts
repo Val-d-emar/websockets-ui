@@ -1,10 +1,13 @@
 // import { createHash } from "node:crypto";
-import { randomInt, randomUUID } from "node:crypto";
+import { randomInt } from "node:crypto";
 import {
+  db_games,
   db_rooms,
   db_users,
   db_winners,
+  Game,
   maxRnd,
+  Player,
   Room,
   User,
   Winner,
@@ -171,7 +174,7 @@ export const add_users_to_room = (
   update_rooms(sockets);
 
   const game_id = randomInt(maxRnd);
-  let i = 0;
+
   room.roomUsers.forEach((user, uid) => {
     const ws = sockets.get(uid);
     if (ws !== undefined) {
@@ -180,7 +183,7 @@ export const add_users_to_room = (
           type: "create_game", //send for both players in the room
           data: JSON.stringify({
             idGame: game_id,
-            idPlayer: i++,
+            idPlayer: uid,
             // \* id for player in the game session, who have sent add_user_to_room request, not enemy *\
           }),
           id: 0,
@@ -210,4 +213,74 @@ export const del_users_rooms = (
   });
 
   update_rooms(sockets);
+};
+
+export const add_ships = (
+  userId: number,
+  RoomId: number,
+  data: object,
+  sockets: Map<number, WebSocket>,
+) => {
+  if (
+    "gameId" in data &&
+    "indexPlayer" in data &&
+    data.indexPlayer === userId &&
+    "ships" in data &&
+    data.ships instanceof Array
+  ) {
+    const gameId = Number(data.gameId);
+
+    let game = db_games.get(gameId);
+
+    const player = new Player(userId, data.ships);
+
+    if (game === undefined) {
+      game = new Game(RoomId, gameId);
+      db_games.add(gameId, game);
+    }
+    game.players.set(userId, player);
+
+    if (game.players.size === 2) {
+      game.players.forEach((_, uid) => {
+        const ws = sockets.get(uid);
+        if (ws !== undefined) {
+          if (ws.readyState === WebSocket.OPEN) {
+            const answer = JSON.stringify({
+              type: "start_game", //send for both players in the room
+              data: JSON.stringify({
+                ships: data.ships,
+                currentPlayerIndex: uid,
+                // \* id for player in the game session, who have sent add_user_to_room request, not enemy *\
+              }),
+              id: 0,
+            });
+            ws.send(answer);
+          }
+        }
+      });
+    }
+
+    //   {
+    //     type: "start_game",
+    //     data:
+    //         {
+    //             ships:
+    //                 [
+    //                     {
+    //                         position: {
+    //                             x: <number>,
+    //                             y: <number>,
+    //                         },
+    //                         direction: <boolean>,
+    //                         length: <number>,
+    //                         type: "small"|"medium"|"large"|"huge",
+    //                     }
+    //                 ],
+    //             currentPlayerIndex: <number>, /* id of the player in the current game session, who have sent his ships */
+    //         },
+    //     id: 0,
+    // }
+  } else {
+    console.log("Error parsing ships");
+  }
 };
