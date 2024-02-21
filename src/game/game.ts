@@ -326,8 +326,8 @@ export const attack = (
       game.players.forEach((player, uid) => {
         if (uid != indexPlayer) {
           //alien
-          const point = player.field[y][x];
-          if (point < 99) {
+          const point: number = player.field[y][x];
+          if (point < 10) {
             //is ship "killed"|"shot",
             const ship = player.ships[point];
             if (ship.destroyed <= 1) {
@@ -339,8 +339,7 @@ export const attack = (
               const xx = ship.position.x;
               const oy = ship.direction;
 
-              attackXY(xx, yy, game, sockets, shot, indexPlayer);
-              for (let i = 1; i < ship.length; i++) {
+              for (let i = 0; i < ship.length; i++) {
                 attackXY(
                   oy ? xx : xx + i,
                   oy ? yy + i : yy,
@@ -350,6 +349,7 @@ export const attack = (
                   indexPlayer,
                 );
               }
+              player.field[y][x] += 100;
               // shot = "miss";
               for (
                 let x_ = xx - 1;
@@ -366,20 +366,31 @@ export const attack = (
                     y_ >= 0 &&
                     x_ < 10 &&
                     y_ < 10 &&
-                    player.field[y_][x_] > 10
-                  )
+                    player.field[y_][x_] === 99
+                  ) {
                     attackXY(x_, y_, game, sockets, "miss", indexPlayer);
+                    player.field[y_][x_] += 100;
+                  }
                 }
+              }
+              player.score++;
+              if (player.score >= player.ships.length) {
+                //finished
+                finish(indexPlayer, gameId, sockets);
               }
             } else {
               shot = "shot";
               player.ships[point].destroyed--;
               attackXY(x, y, game, sockets, shot, indexPlayer);
+              player.field[y][x] += 100;
             }
-          } else {
+          } else if (point == 99) {
             shot = "miss";
-            // player.field[y][x] = 100 + point;
             attackXY(x, y, game, sockets, shot, indexPlayer);
+            player.field[y][x] += 100;
+          } else {
+            // already shotted
+            return;
           }
         }
       });
@@ -436,4 +447,37 @@ export const turn = (
       }
     }
   });
+};
+
+export const finish = (
+  playerId: number,
+  gameId: number,
+  sockets: Map<number, WebSocketLive>,
+) => {
+  const game = db_games.get(gameId);
+  if (game === undefined) {
+    console.log("Error finding game");
+    return;
+  }
+
+  game.players.forEach((_, uid) => {
+    const ws = sockets.get(uid);
+    if (ws !== undefined) {
+      if (ws.readyState === WebSocketLive.OPEN) {
+        const answer = JSON.stringify({
+          type: "finish", //send for both players in the room
+          data: JSON.stringify({
+            winPlayer: playerId, // id of the player in the current game session
+          }),
+          id: 0,
+        });
+        ws.send(answer);
+      }
+    }
+  });
+  const winner = db_winners.get(playerId);
+  if (winner !== undefined) {
+    winner.wins++;
+  }
+  update_winners(playerId, sockets);
 };

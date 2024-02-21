@@ -46,6 +46,7 @@ export class Ship {
 }
 
 export class Player {
+  public score: number = 0;
   public ships: Ship[] = [];
   public field: number[][] = [];
   constructor(
