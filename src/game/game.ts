@@ -128,10 +128,10 @@ export const update_winners = (
   }
   const w: object[] = [];
 
-  db_winners.get_all().forEach((win) => {
+  db_winners.get_all().forEach((winner) => {
     w.push({
-      name: win.name,
-      wins: win.wins,
+      name: winner.name,
+      wins: winner.wins,
     });
   });
 
@@ -340,16 +340,12 @@ export const attack = (
               const oy = ship.direction;
 
               for (let i = 0; i < ship.length; i++) {
-                attackXY(
-                  oy ? xx : xx + i,
-                  oy ? yy + i : yy,
-                  game,
-                  sockets,
-                  shot,
-                  indexPlayer,
-                );
+                const x_ = oy ? xx : xx + i;
+                const y_ = oy ? yy + i : yy;
+                attackXY(x_, y_, game, sockets, shot, indexPlayer);
+                player.field[y_][x_] += 200;
               }
-              player.field[y][x] += 100;
+              // player.field[y][x] += 100;
               // shot = "miss";
               for (
                 let x_ = xx - 1;
@@ -388,13 +384,22 @@ export const attack = (
             shot = "miss";
             attackXY(x, y, game, sockets, shot, indexPlayer);
             player.field[y][x] += 100;
-          } else {
+          } else if (point >= 100 && point < 199) {
             // already shotted
-            return;
+            attackXY(x, y, game, sockets, "shot", indexPlayer);
+            shot = "miss";
+          } else if (point >= 200) {
+            // already killed
+            attackXY(x, y, game, sockets, "killed", indexPlayer);
+            shot = "miss";
+          } else if (point == 199) {
+            // already missed
+            shot = "miss";
+            attackXY(x, y, game, sockets, shot, indexPlayer);
           }
+          turn(gameId, sockets, shot === "miss" ? true : false);
         }
       });
-      turn(gameId, sockets, shot === "miss" ? true : false);
     } else {
       console.log("Error parsing data");
       return;
