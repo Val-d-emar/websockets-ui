@@ -9,6 +9,7 @@ import {
   del_users_rooms,
   add_ships,
   attack,
+  randomAttack,
 } from "../game/game";
 import { db_users, maxRnd } from "../db/db";
 
@@ -82,6 +83,9 @@ wss.on("connection", function connection(ws: WebSocketLive, request: object) {
           break;
         case "attack":
           attack(res.data, sockets);
+          break;
+        case "randomAttack":
+          randomAttack(res.data, sockets);
           break;
       }
       console.log(res);

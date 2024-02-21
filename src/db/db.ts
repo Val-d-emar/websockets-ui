@@ -16,9 +16,9 @@ export class Point {
   public x: number = 0;
   public y: number = 0;
   constructor(obj?: object) {
-    if (obj) {
+    if (obj !== undefined) {
       this.x = "x" in obj ? Number(obj.x) : 0;
-      this.x = "y" in obj ? Number(obj.y) : 0;
+      this.y = "y" in obj ? Number(obj.y) : 0;
     }
   }
 }
@@ -35,10 +35,12 @@ export class Ship {
   public direction: boolean = true;
   public length: number = 1;
   public type: shipType = shipType.small;
+  public destroyed: number = 1;
   constructor(obj: object) {
     this.position = "position" in obj ? new Point(obj.position!) : new Point();
     this.direction = "direction" in obj ? Boolean(obj.direction) : true;
     this.length = "length" in obj ? Number(obj.length) : 1;
+    this.destroyed = this.length;
     this.type = "type" in obj ? (obj.type as shipType) : shipType.small;
   }
 }
@@ -57,20 +59,20 @@ export class Player {
       });
     } else throw new Error("Wrong ships format");
     if (field === undefined) {
-      for (let i = 0; i < 10; i++) {
+      for (let y = 0; y < 10; y++) {
         this.field.push([]);
-        for (let j = 0; j < 10; j++) {
-          this.field[i].push(99);
+        for (let x = 0; x < 10; x++) {
+          this.field[y].push(99);
         }
       }
       ships.forEach((s, ind) => {
-        if (!s.direction) {
-          for (let i = s.position.x; i < s.position.x + s.length; i++) {
-            this.field![s.position.y][i] = ind;
+        if (s.direction) {
+          for (let y = s.position.y; y < s.position.y + s.length; y++) {
+            this.field![y][s.position.x] = ind;
           }
         } else {
-          for (let i = s.position.y; i < s.position.y + s.length; i++) {
-            this.field![i][s.position.x] = ind;
+          for (let x = s.position.x; x < s.position.x + s.length; x++) {
+            this.field![s.position.y][x] = ind;
           }
         }
       });
@@ -100,7 +102,7 @@ export class Game extends Record {
       typeof game.roomId === "number" &&
       typeof game.idGame === "number" &&
       game.players instanceof Map &&
-      Object.keys(game).length == 3
+      Object.keys(game).length == 4
     );
   }
 }

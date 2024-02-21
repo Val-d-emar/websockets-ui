@@ -229,25 +229,25 @@ export const add_ships = (
 
     let game = db_games.get(gameId);
 
-    const player = new Player(userId, data.ships);
-
     if (game === undefined) {
       game = new Game(RoomId, gameId);
       db_games.add(gameId, game);
       const room = db_rooms.get(RoomId);
       if (room !== undefined) room.game = game;
     }
+
+    const player = new Player(userId, data.ships);
     game.players.set(userId, player);
 
     if (game.players.size === 2) {
-      game.players.forEach((_, uid) => {
+      game.players.forEach((player, uid) => {
         const ws = sockets.get(uid);
         if (ws !== undefined) {
           if (ws.readyState === WebSocketLive.OPEN) {
             const answer = JSON.stringify({
               type: "start_game", //send for both players in the room
               data: JSON.stringify({
-                ships: data.ships,
+                ships: [],
                 currentPlayerIndex: uid,
                 // \* id for player in the game session, who have sent add_user_to_room request, not enemy *\
               }),
@@ -262,6 +262,36 @@ export const add_ships = (
   } else {
     console.log("Error parsing ships");
   }
+};
+
+const attackXY = (
+  xx: number,
+  yy: number,
+  game: Game,
+  sockets: Map<number, WebSocketLive>,
+  shot: string,
+  indexPlayer: number,
+) => {
+  game.players.forEach((_player: Player, uid: number) => {
+    const ws = sockets.get(uid);
+    if (ws !== undefined) {
+      if (ws.readyState === WebSocketLive.OPEN) {
+        const answer = JSON.stringify({
+          type: "attack", //send for both players in the room
+          data: JSON.stringify({
+            position: {
+              x: xx,
+              y: yy,
+            },
+            currentPlayer: indexPlayer, // id of the player in the current game session
+            status: shot,
+          }),
+          id: 0,
+        });
+        ws.send(answer);
+      }
+    }
+  });
 };
 
 export const attack = (
@@ -299,36 +329,57 @@ export const attack = (
           const point = player.field[y][x];
           if (point < 99) {
             //is ship "killed"|"shot",
-            if (player.ships[point].length <= 1) {
+            const ship = player.ships[point];
+            if (ship.destroyed <= 1) {
               shot = "killed";
-              player.ships[point].length = 0;
+              ship.destroyed = 0;
+              console.log(`ship: `, ship);
+              console.log(`ship.position: `, ship.position);
+              const yy = ship.position.y;
+              const xx = ship.position.x;
+              const oy = ship.direction;
+
+              attackXY(xx, yy, game, sockets, shot, indexPlayer);
+              for (let i = 1; i < ship.length; i++) {
+                attackXY(
+                  oy ? xx : xx + i,
+                  oy ? yy + i : yy,
+                  game,
+                  sockets,
+                  shot,
+                  indexPlayer,
+                );
+              }
+              // shot = "miss";
+              for (
+                let x_ = xx - 1;
+                x_ <= (oy ? xx + 1 : xx + ship.length);
+                x_++
+              ) {
+                for (
+                  let y_ = yy - 1;
+                  y_ <= (oy ? yy + ship.length : yy + 1);
+                  y_++
+                ) {
+                  if (
+                    x_ >= 0 &&
+                    y_ >= 0 &&
+                    x_ < 10 &&
+                    y_ < 10 &&
+                    player.field[y_][x_] > 10
+                  )
+                    attackXY(x_, y_, game, sockets, "miss", indexPlayer);
+                }
+              }
             } else {
               shot = "shot";
-              player.ships[point].length--;
+              player.ships[point].destroyed--;
+              attackXY(x, y, game, sockets, shot, indexPlayer);
             }
           } else {
             shot = "miss";
             // player.field[y][x] = 100 + point;
-          }
-        }
-      });
-      game.players.forEach((player, uid) => {
-        const ws = sockets.get(uid);
-        if (ws !== undefined) {
-          if (ws.readyState === WebSocketLive.OPEN) {
-            const answer = JSON.stringify({
-              type: "attack", //send for both players in the room
-              data: JSON.stringify({
-                position: {
-                  x: x,
-                  y: y,
-                },
-                currentPlayer: indexPlayer, // id of the player in the current game session
-                status: shot,
-              }),
-              id: 0,
-            });
-            ws.send(answer);
+            attackXY(x, y, game, sockets, shot, indexPlayer);
           }
         }
       });
@@ -338,6 +389,16 @@ export const attack = (
       return;
     }
   }
+};
+
+export const randomAttack = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: { [x: string]: any },
+  sockets: Map<number, WebSocketLive>,
+) => {
+  data.x = randomInt(10);
+  data.y = randomInt(10);
+  attack(data, sockets);
 };
 
 export const turn = (
@@ -353,13 +414,11 @@ export const turn = (
 
   if (turning) {
     for (const uid of game.players.keys()) {
-      // game.players.forEach((_, uid) => {
       if (uid != game.turn) {
         game.turn = uid;
         break;
       }
     }
-    // );
   }
 
   game.players.forEach((_, uid) => {
