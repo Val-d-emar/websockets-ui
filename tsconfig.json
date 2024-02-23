@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "resolveJsonModule": true,
     /* Visit https://aka.ms/tsconfig to read more about this file */
 
     /* Projects */
@@ -109,10 +110,14 @@
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
-  "include": ["src/**/*", "src/*"],
+  "include": ["src/**/*", "src/*", "*.json"],
   "exclude": ["node_modules"],
   "lib": ["esnext"],
   "ts-node": {
     "esm": true
   }
+  // ,
+  //   "files":[
+  //       "data.json"
+  //   ]
 }

@@ -1,5 +1,5 @@
 // import { createHash } from "node:crypto";
-import { randomInt } from "node:crypto";
+import { createHash, getRandomValues, randomInt } from "node:crypto";
 import {
   db_games,
   db_rooms,
@@ -13,6 +13,10 @@ import {
   Winner,
 } from "../db/db.ts";
 import { WebSocketLive } from "../ws/wsock";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const ships_vars = require("./data.json");
+
 export const reg_user = (username: string, passwd: string, userId: number) => {
   let res: string;
   const user = new User(username, passwd, userId);
@@ -67,10 +71,10 @@ export const update_rooms = (sockets: Map<number, WebSocketLive>) => {
       return; //send rooms list, where only one player inside
     }
 
-    room.roomUsers.forEach((user) => {
+    room.roomUsers.forEach((user, uid) => {
       a[i++] = {
         name: `${user.name}`,
-        index: i,
+        index: uid,
       };
     });
 
@@ -156,9 +160,10 @@ export const add_users_to_room = (
   const room = db_rooms.get(indexRoom);
   if (room === undefined) {
     console.log("Oops! room is not find!");
-    return "";
+    return;
   }
   if (room.roomUsers.get(uid) !== undefined) {
+    console.log("Oops! user is me");
     return; //user is me
   }
   const user = db_users.get(uid);
@@ -171,8 +176,15 @@ export const add_users_to_room = (
   update_rooms(sockets);
 
   const game_id = randomInt(maxRnd);
+  let game = db_games.get(game_id);
 
-  room.roomUsers.forEach((user, uid) => {
+  if (game === undefined) {
+    game = new Game(indexRoom, game_id);
+    db_games.add(game_id, game);
+  }
+  room.game = game;
+
+  room.roomUsers.forEach((_, uid) => {
     const ws = sockets.get(uid);
     if (ws !== undefined) {
       if (ws.readyState === WebSocketLive.OPEN) {
@@ -232,22 +244,22 @@ export const add_ships = (
     if (game === undefined) {
       game = new Game(RoomId, gameId);
       db_games.add(gameId, game);
-      const room = db_rooms.get(RoomId);
-      if (room !== undefined) room.game = game;
     }
+    const room = db_rooms.get(RoomId);
+    if (room !== undefined) room.game = game;
 
     const player = new Player(userId, data.ships);
     game.players.set(userId, player);
 
     if (game.players.size === 2) {
-      game.players.forEach((player, uid) => {
+      game.players.forEach((plr, uid) => {
         const ws = sockets.get(uid);
         if (ws !== undefined) {
           if (ws.readyState === WebSocketLive.OPEN) {
             const answer = JSON.stringify({
               type: "start_game", //send for both players in the room
               data: JSON.stringify({
-                ships: [],
+                ships: plr.ships,
                 currentPlayerIndex: uid,
                 // \* id for player in the game session, who have sent add_user_to_room request, not enemy *\
               }),
@@ -316,10 +328,10 @@ export const attack = (
     const indexPlayer = data.indexPlayer;
     if (game === undefined) {
       console.log("Error finding game");
-      return;
+      return false;
     }
 
-    if (game.turn != indexPlayer) return; //it isn't your step
+    if (game.turn != indexPlayer) return false; //it isn't your step
 
     let shot = ""; //"miss"|"killed"|"shot",
     if (game.players.size === 2) {
@@ -398,11 +410,12 @@ export const attack = (
             attackXY(x, y, game, sockets, shot, indexPlayer);
           }
           turn(gameId, sockets, shot === "miss" ? true : false);
+          return true;
         }
       });
     } else {
       console.log("Error parsing data");
-      return;
+      return false;
     }
   }
 };
@@ -485,4 +498,176 @@ export const finish = (
     winner.wins++;
   }
   update_winners(playerId, sockets);
+};
+
+export const single_play = (
+  ws: WebSocketLive,
+  sockets: Map<number, WebSocketLive>,
+) => {
+  //create Bot
+  const botId = Number.parseInt(
+    createHash("shake256", { outputLength: 4 })
+      .update(`Bot for ${ws.botID}`)
+      .digest("hex"),
+    16,
+  );
+  const user = new User(
+    `Bot for ${db_users.get(ws.userId)?.name}`,
+    `Passwd ${db_users.get(ws.userId)?.name}`,
+    botId,
+  );
+
+  db_users.add(botId, user);
+
+  // sockets.set(botId, ws);
+  const bot_room = create_room(botId);
+
+  // update_room(botId, bot_room.roomId, sockets);
+  update_rooms(sockets);
+  // update_winners(botId, sockets);
+  const win = db_winners.get(botId);
+  if (win === undefined) {
+    db_winners.add(botId, new Winner(user.name, 0));
+  }
+
+  update_winners(ws.userId, sockets);
+
+  // const room = create_room(ws.userId);
+  // update_room(ws.userId, room.roomId, sockets);
+  // update_winners(ws.userId, sockets);
+
+  ws.botID = botId;
+  ws.RoomId = bot_room.roomId;
+  // sockets.set(botId, ws);
+
+  // add_users_to_room(botId, bot_room.roomId, sockets);
+  add_users_to_room(ws.userId, ws.RoomId, sockets);
+
+  const botships = ships_vars[randomInt(ships_vars.length)];
+  const data = {
+    gameId: bot_room.game.idGame,
+    ships: botships,
+    indexPlayer: botId /* id of the player in the current game session */,
+  };
+
+  add_ships(botId, ws.RoomId, data, sockets);
+  // return;
+  let xx = randomInt(10);
+  let yy = randomInt(10);
+  const shots = new Map<number, { x: number; y: number }>();
+  // const shots = new Array<{ x: number, y: number }>();
+  for (let y = 0; y < 10; y++) {
+    for (let x = 0; x < 10; x++) {
+      shots.set(x + y * 10, { x: x, y: y });
+    }
+  }
+  shots.delete(xx + 10 * yy);
+
+  const goal = { x: -1, y: -1, lenx: 1, leny: 1 };
+
+  const cb = () => {
+    const game = db_games.get(bot_room.game.idGame);
+    let player: Player | undefined;
+    if (game !== undefined) {
+      player = game.players.get(ws.userId);
+      if (player === undefined) {
+        console.error("something went wrong player === undefined");
+        setTimeout(cb, 1000);
+        return;
+      }
+    } else console.error("something went wrong game === undefined");
+
+    const cb2 = () => {
+      // if (game?.turn != botId) return; //it isn't your step
+      if (bot_room.game.turn != botId) return; //it isn't your step
+      if (player === undefined) return;
+      const field = player.field;
+
+      attack(
+        {
+          gameId: bot_room.game.idGame,
+          x: xx,
+          y: yy,
+          indexPlayer: botId /* id of the player in the current game session */,
+        },
+        sockets,
+      );
+
+      // const zone = new Array<{ x: number; y: number }>();
+
+      if (field[yy][xx] >= 100 && field[yy][xx] < 200) {
+        //is ship "shot",
+        if (goal.x > 0 && Math.abs(xx - goal.x) == 1) {
+          goal.lenx++;
+        } else if (goal.y > 0 && Math.abs(yy - goal.y) == 1) {
+          goal.leny++;
+        }
+        goal.x = xx;
+        goal.y = yy;
+      } else if (field[yy][xx] >= 200) {
+        goal.x = -1;
+        goal.y = -1;
+        goal.lenx = 1;
+        goal.leny = 1;
+        shots.forEach((val, key) => {
+          if (field[val.y][val.x] >= 100) shots.delete(key);
+        });
+      }
+      let counter = 0;
+      const zone = new Array<{ x: number; y: number }>();
+      shots.forEach((val) => {
+        zone.push(val);
+      });
+      do {
+        if (goal.x < 0 && goal.y < 0) {
+          //not goal
+          let shot = 0;
+          if (zone.length == 1) {
+            shot = 0;
+          } else if (zone.length > 1) {
+            shot = randomInt(zone.length);
+          } else {
+            return;
+          }
+          xx = zone[shot].x;
+          yy = zone[shot].y;
+        } else {
+          const gzone = zone.filter((a) => {
+            if (
+              goal.lenx > 1 &&
+              Math.abs(a.x - goal.x) <= goal.lenx &&
+              a.x != goal.x
+            )
+              return true;
+            if (
+              goal.leny > 1 &&
+              Math.abs(a.y - goal.y) <= goal.leny &&
+              a.y != goal.y
+            )
+              return true;
+            if (Math.abs(a.y - goal.y) == 1) return true;
+            if (Math.abs(a.x - goal.x) == 1) return true;
+            return false;
+          });
+          let count = gzone.length;
+          if (count <= 0) {
+            goal.x = -1;
+            goal.y = -1;
+            goal.lenx = 1;
+            goal.leny = 1;
+            continue;
+          }
+          do {
+            const shot = randomInt(gzone.length);
+            xx = gzone[shot].x;
+            yy = gzone[shot].y;
+          } while (field[yy][xx] >= 100 && --count >= 0);
+        }
+      } while (field[yy][xx] >= 100 && ++counter < 100);
+      shots.delete(xx + yy * 10);
+      if (shots.size > 0) setTimeout(cb2, 1000);
+    };
+    setTimeout(cb2, 1000);
+  };
+  setTimeout(cb, 1000);
 };

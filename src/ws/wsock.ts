@@ -10,12 +10,14 @@ import {
   add_ships,
   attack,
   randomAttack,
+  single_play,
 } from "../game/game";
 import { db_users, maxRnd } from "../db/db";
 
 export class WebSocketLive extends WebSocket {
   isAlive = false;
   userId = randomInt(maxRnd);
+  botID = randomInt(maxRnd);
   RoomId = 0;
 }
 export const wss = new WebSocketServer({ port: 3000, clientTracking: true });
@@ -64,16 +66,13 @@ wss.on("connection", function connection(ws: WebSocketLive, request: object) {
           );
           ws.send(reg_user(res.data.name, res.data.password, ws.userId));
           sockets.set(ws.userId, ws);
-          break;
-        case "create_room":
           console.log(`userId is ${ws.userId}`);
           console.log(`username is ${db_users.get(ws.userId)?.name}`);
-          // console.log(`users =`, db_users.get_all());
-          const rid = create_room(ws.userId);
-          if (rid) {
-            update_room(ws.userId, rid.roomId, sockets);
-            update_winners(ws.userId, sockets);
-          }
+          break;
+        case "create_room":
+          const room = create_room(ws.userId);
+          update_room(ws.userId, room.roomId, sockets);
+          update_winners(ws.userId, sockets);
         case "add_user_to_room":
           ws.RoomId = res.data.indexRoom;
           add_users_to_room(ws.userId, ws.RoomId, sockets);
@@ -86,6 +85,9 @@ wss.on("connection", function connection(ws: WebSocketLive, request: object) {
           break;
         case "randomAttack":
           randomAttack(res.data, sockets);
+          break;
+        case "single_play":
+          single_play(ws, sockets);
           break;
       }
       console.log(res);
