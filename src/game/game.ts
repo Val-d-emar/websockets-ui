@@ -1,4 +1,3 @@
-// import { createHash } from "node:crypto";
 import { randomInt } from "node:crypto";
 import {
   db_games,
@@ -53,7 +52,6 @@ export const reg_user = (
     return;
   }
 
-  // if (user === undefined) {
   let newuser: boolean = true;
   db_users.get_all().forEach((u) => {
     if (u.name === username) {
@@ -355,11 +353,7 @@ const attackXY = (
   });
 };
 
-export const attack = (
-  // userId: number,
-  data: object,
-  sockets: Map<number, WebSocketLive>,
-) => {
+export const attack = (data: object, sockets: Map<number, WebSocketLive>) => {
   if (
     "gameId" in data &&
     typeof data.gameId === "number" &&
@@ -406,7 +400,6 @@ export const attack = (
                 attackXY(x_, y_, game, sockets, shot, indexPlayer);
                 player.field[y_][x_] += 200;
               }
-              // player.field[y][x] += 100;
               // shot = "miss";
               for (
                 let x_ = xx - 1;

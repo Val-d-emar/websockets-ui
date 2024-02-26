@@ -1,5 +1,4 @@
-// import { createHash } from "node:crypto";
-import { createHash, randomInt } from "node:crypto";
+import { randomInt } from "node:crypto";
 import {
   db_games,
   db_rooms,
@@ -26,18 +25,6 @@ export const single_play = (
   ws: WebSocketLive,
   sockets: Map<number, WebSocketLive>,
 ) => {
-  //create Bot
-  //   const botId = Number.parseInt(
-  //     createHash("shake256", { outputLength: 4 })
-  //       .update(`Bot for ${ws.botID}`)
-  //       .digest("hex"),
-  //     16,
-  //   );
-  //   const user = new User(
-  //     `Bot for ${db_users.get(ws.userId)?.name}`,
-  //     `Passwd ${db_users.get(ws.userId)?.name}`,
-  //     botId,
-  //   );
   const botId = 23456;
   const user = new User(`Bot`, `Passwd2345tgfder5t6y7uioklkmnhlkhgbnm`, botId);
 
