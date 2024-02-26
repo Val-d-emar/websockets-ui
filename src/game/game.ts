@@ -17,34 +17,70 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const ships_vars = require("./data.json");
 
-export const reg_user = (username: string, passwd: string, userId: number) => {
-  let res: string;
-  const user = new User(username, passwd, userId);
-  try {
-    res = JSON.stringify({
-      type: "reg",
-      data: JSON.stringify({
-        name: username,
-        index: 0,
-        error: false,
-        errorText: "",
+export const reg_user = (
+  username: string,
+  passwd: string,
+  ws: WebSocketLive,
+  sockets: Map<number, WebSocketLive>,
+) => {
+  let user = db_users.get(ws.userId);
+  const sock = sockets.get(ws.userId);
+  if (sock !== undefined) {
+    ws.send(
+      JSON.stringify({
+        type: "reg",
+        data: JSON.stringify({
+          name: username,
+          index: 0,
+          error: true,
+          errorText: `User ${username} is already playing another game!`,
+        }),
+        id: 0,
       }),
-      id: 0,
-    });
-    db_users.add(userId, user);
-  } catch (error) {
-    res = JSON.stringify({
-      type: "reg",
-      data: JSON.stringify({
-        name: username,
-        index: 0,
-        error: true,
-        errorText: `${error}`,
-      }),
-      id: 0,
-    });
+    );
+    return;
   }
-  return res;
+
+  // if (user === undefined) {
+  let newuser: boolean = true;
+  db_users.get_all().forEach((user) => {
+    if (user.name === username) {
+      newuser = false;
+      ws.send(
+        JSON.stringify({
+          type: "reg",
+          data: JSON.stringify({
+            name: username,
+            index: 0,
+            error: true,
+            errorText: `Name ${username} already have another user`,
+          }),
+          id: 0,
+        }),
+      );
+      return;
+    }
+  });
+  if (newuser) {
+    if (user === undefined) user = new User(username, passwd, ws.userId);
+    ws.send(
+      JSON.stringify({
+        type: "reg",
+        data: JSON.stringify({
+          name: username,
+          index: 0,
+          error: false,
+          errorText: "",
+        }),
+        id: 0,
+      }),
+    );
+
+    db_users.add(ws.userId, user);
+    sockets.set(ws.userId, ws);
+    return;
+  }
+  // }
 };
 
 export const create_room = (uid: number) => {
@@ -561,9 +597,9 @@ export const single_play = (
       shots.set(x + y * 10, { x: x, y: y });
     }
   }
-  shots.delete(xx + 10 * yy);
+  // shots.delete(xx + 10 * yy);
 
-  const goal = { x: -1, y: -1, lenx: 1, leny: 1 };
+  const goal = { x: -1, y: -1, ox: false, ship: 0, len: 1 };
 
   const cb = () => {
     const game = db_games.get(bot_room.game.idGame);
@@ -578,9 +614,15 @@ export const single_play = (
     } else console.error("something went wrong game === undefined");
 
     const cb2 = () => {
-      // if (game?.turn != botId) return; //it isn't your step
-      if (bot_room.game.turn != botId) return; //it isn't your step
-      if (player === undefined) return;
+      if (bot_room.game.turn != botId) {
+        setTimeout(cb2, 1000);
+        return;
+      } //it isn't your step
+
+      if (player === undefined) {
+        setTimeout(cb2, 1000);
+        return;
+      }
       const field = player.field;
 
       attack(
@@ -592,79 +634,37 @@ export const single_play = (
         },
         sockets,
       );
-
-      // const zone = new Array<{ x: number; y: number }>();
-
-      if (field[yy][xx] >= 100 && field[yy][xx] < 200) {
-        //is ship "shot",
-        if (goal.x > 0 && Math.abs(xx - goal.x) == 1) {
-          goal.lenx++;
-        } else if (goal.y > 0 && Math.abs(yy - goal.y) == 1) {
-          goal.leny++;
-        }
-        goal.x = xx;
-        goal.y = yy;
-      } else if (field[yy][xx] >= 200) {
-        goal.x = -1;
-        goal.y = -1;
-        goal.lenx = 1;
-        goal.leny = 1;
-        shots.forEach((val, key) => {
-          if (field[val.y][val.x] >= 100) shots.delete(key);
-        });
-      }
-      let counter = 0;
-      const zone = new Array<{ x: number; y: number }>();
-      shots.forEach((val) => {
-        zone.push(val);
-      });
-      do {
-        if (goal.x < 0 && goal.y < 0) {
-          //not goal
-          let shot = 0;
-          if (zone.length == 1) {
-            shot = 0;
-          } else if (zone.length > 1) {
-            shot = randomInt(zone.length);
-          } else {
-            return;
-          }
-          xx = zone[shot].x;
-          yy = zone[shot].y;
-        } else {
-          const gzone = zone.filter((a) => {
-            if (
-              goal.lenx > 1 &&
-              Math.abs(a.x - goal.x) <= goal.lenx &&
-              a.x != goal.x
-            )
-              return true;
-            if (
-              goal.leny > 1 &&
-              Math.abs(a.y - goal.y) <= goal.leny &&
-              a.y != goal.y
-            )
-              return true;
-            if (Math.abs(a.y - goal.y) == 1) return true;
-            if (Math.abs(a.x - goal.x) == 1) return true;
-            return false;
-          });
-          let count = gzone.length;
-          if (count <= 0) {
-            goal.x = -1;
-            goal.y = -1;
-            goal.lenx = 1;
-            goal.leny = 1;
-            continue;
-          }
-          do {
-            const shot = randomInt(gzone.length);
-            xx = gzone[shot].x;
-            yy = gzone[shot].y;
-          } while (field[yy][xx] >= 100 && --count >= 0);
-        }
-      } while (field[yy][xx] >= 100 && ++counter < 100);
       shots.delete(xx + yy * 10);
+
+      shots.delete(xx + yy * 10);
+      let i = 0;
+      shots.forEach((val, key) => {
+        if (field[val.y][val.x] >= 200) {
+          i++;
+          shots.delete(key);
+        }
+      });
+      if (shots.size === 0 || i === 20) {
+        //game over
+        db_games.del(bot_room.game.idGame);
+        db_rooms.del(botId);
+        db_users.del(botId);
+        return;
+      }
+
+      const zone = new Array<{ x: number; y: number }>();
+
+      shots.forEach((val, key) => {
+        if (field[val.y][val.x] >= 100) {
+          shots.delete(key);
+        } else zone.push(val);
+      });
+      // }
+      if (zone.length >= 1) {
+        const shot = zone.length == 1 ? 0 : randomInt(zone.length);
+        xx = zone[shot].x;
+        yy = zone[shot].y;
+      }
       if (shots.size > 0) setTimeout(cb2, 1000);
     };
     setTimeout(cb2, 1000);

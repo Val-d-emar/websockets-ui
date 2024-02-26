@@ -64,8 +64,7 @@ wss.on("connection", function connection(ws: WebSocketLive, request: object) {
               .digest("hex"),
             16,
           );
-          ws.send(reg_user(res.data.name, res.data.password, ws.userId));
-          sockets.set(ws.userId, ws);
+          reg_user(res.data.name, res.data.password, ws, sockets);
           console.log(`userId is ${ws.userId}`);
           console.log(`username is ${db_users.get(ws.userId)?.name}`);
           break;
