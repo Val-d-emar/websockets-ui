@@ -1,18 +1,9 @@
 import { createHash, randomInt } from "node:crypto";
 import { WebSocket, WebSocketServer } from "ws";
-import {
-  reg_user,
-  update_winners,
-  add_users_to_room,
-  create_room,
-  update_room,
-  del_users_rooms,
-  add_ships,
-  attack,
-  randomAttack,
-  single_play,
-} from "../game/game";
-import { db_users, maxRnd } from "../db/db";
+
+import { maxRnd } from "../db/db";
+import { parse_event } from "./events";
+import { del_users_rooms } from "../game/game";
 
 export class WebSocketLive extends WebSocket {
   isAlive = false;
@@ -56,39 +47,7 @@ wss.on("connection", function connection(ws: WebSocketLive, request: object) {
       if (typeof res.data === "string" && res.data.length > 1) {
         res.data = JSON.parse(res.data);
       }
-      switch (res.type) {
-        case "reg":
-          ws.userId = Number.parseInt(
-            createHash("shake256", { outputLength: 4 })
-              .update(`${res.data.name}${res.data.passwd}`)
-              .digest("hex"),
-            16,
-          );
-          reg_user(res.data.name, res.data.password, ws, sockets);
-          console.log(`userId is ${ws.userId}`);
-          console.log(`username is ${db_users.get(ws.userId)?.name}`);
-          break;
-        case "create_room":
-          const room = create_room(ws.userId);
-          update_room(ws.userId, room.roomId, sockets);
-          update_winners(ws.userId, sockets);
-        case "add_user_to_room":
-          ws.RoomId = res.data.indexRoom;
-          add_users_to_room(ws.userId, ws.RoomId, sockets);
-          break;
-        case "add_ships":
-          add_ships(ws.userId, ws.RoomId, res.data, sockets);
-          break;
-        case "attack":
-          attack(res.data, sockets);
-          break;
-        case "randomAttack":
-          randomAttack(res.data, sockets);
-          break;
-        case "single_play":
-          single_play(ws, sockets);
-          break;
-      }
+      parse_event(res, ws, sockets);
       console.log(res);
     } catch (e) {
       console.error("Error data parsing", e);
