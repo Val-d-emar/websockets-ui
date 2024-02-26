@@ -7,32 +7,32 @@
 ## Basic Scope
 
 - Websocket
-  - [ ] **+6** Implemented workable websocket server
-  - [ ] **+6** Handle websocket clients connection/disconnection properly
-  - [ ] **+10** Websocket server message handler implemented properly
-  - [ ] **+10** Websocket server message sender implemented properly
+  - [X] **+6** Implemented workable websocket server
+  - [X] **+6** Handle websocket clients connection/disconnection properly
+  - [X] **+10** Websocket server message handler implemented properly
+  - [X] **+10** Websocket server message sender implemented properly
 - User
-  - [ ] **+5** Create user with password in temporary database
-  - [ ] **+5** User validation
+  - [X] **+5** Create user with password in temporary database
+  - [X] **+5** User validation
 - Room
-  - [ ] **+6** Create game room
-  - [ ] **+6** Add user to game room
-  - [ ] **+6** Start game
-  - [ ] **+6** Finish game
-  - [ ] **+8** Update room's game state
-  - [ ] **+4** Update player's turn
-  - [ ] **+8** Update players winner table
+  - [X] **+6** Create game room
+  - [X] **+6** Add user to game room
+  - [X] **+6** Start game
+  - [X] **+6** Finish game
+  - [X] **+8** Update room's game state
+  - [X] **+4** Update player's turn
+  - [X] **+8** Update players winner table
 - Ships
-  - [ ] **+10** Locate ship to the game board
+  - [X] **+10** Locate ship to the game board
 - Game
-  - [ ] **+8** Attack
-  - [ ] **+4** Random attack
+  - [X] **+8** Attack
+  - [X] **+4** Random attack
 
 ## Advanced Scope
 
-- [ ] **+30** Task implemented on Typescript
-- [ ] **+20** Codebase is separated (at least 4 modules)
-- [ ] **+30** Make bot for single play (optionally)
+- [X] **+30** Task implemented on Typescript
+- [X] **+20** Codebase is separated (at least 4 modules)
+- [X] **+30** Make bot for single play (optionally)
 
 ## Forfeits
 
