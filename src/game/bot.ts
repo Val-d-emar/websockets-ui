@@ -27,17 +27,19 @@ export const single_play = (
   sockets: Map<number, WebSocketLive>,
 ) => {
   //create Bot
-  const botId = Number.parseInt(
-    createHash("shake256", { outputLength: 4 })
-      .update(`Bot for ${ws.botID}`)
-      .digest("hex"),
-    16,
-  );
-  const user = new User(
-    `Bot for ${db_users.get(ws.userId)?.name}`,
-    `Passwd ${db_users.get(ws.userId)?.name}`,
-    botId,
-  );
+  //   const botId = Number.parseInt(
+  //     createHash("shake256", { outputLength: 4 })
+  //       .update(`Bot for ${ws.botID}`)
+  //       .digest("hex"),
+  //     16,
+  //   );
+  //   const user = new User(
+  //     `Bot for ${db_users.get(ws.userId)?.name}`,
+  //     `Passwd ${db_users.get(ws.userId)?.name}`,
+  //     botId,
+  //   );
+  const botId = 23456;
+  const user = new User(`Bot`, `Passwd2345tgfder5t6y7uioklkmnhlkhgbnm`, botId);
 
   db_users.add(botId, user);
 
