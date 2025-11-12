@@ -1,0 +1,11 @@
+node_modules
+
+build
+dist
+coverage
+
+front
+
+*.log
+*.md
+*.out

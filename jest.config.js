@@ -1,21 +1,14 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
-// module.exports = {
-//   preset: 'ts-jest',
-//   testEnvironment: 'node',
-// };
-module.exports = {
-  testEnvironment: 'node',
-  testPathIgnorePatterns: ['/node_modules/', '/front/'],
-  testMatch: ['**/?(*.)+(test).ts'],
-  moduleFileExtensions: ['ts', 'js', 'json'],
-  // moduleNameMapper: {
-  //   '^axios$': require.resolve('axios'),
-  // },
+export default {
+  testEnvironment: "node",
+  testPathIgnorePatterns: ["/node_modules/", "/front/"],
+  testMatch: ["**/?(*.)+(test).ts"],
+  moduleFileExtensions: ["ts", "js", "json"],
   restoreMocks: true,
   resetMocks: true,
-  moduleDirectories: ['node_modules', '<rootDir>/src'],
+  moduleDirectories: ["node_modules", "<rootDir>/src"],
   transform: {
-    '^.+\\.ts?$': 'ts-jest',
+    "^.+\\.ts?$": "ts-jest",
   },
   testTimeout: 10000,
 };
