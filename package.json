@@ -13,8 +13,8 @@
     "start:dev": "nodemon ./index.js",
     "test": "jest --silent",
     "test:verbose": "jest",
-    "format": "prettier .",
-    "lint": "eslint .",
+    "format": "prettier --check .",
+    "lint": "eslint --stats .",
     "format:fix": "prettier --write .",
     "lint:fix": "eslint . --fix"
   },
