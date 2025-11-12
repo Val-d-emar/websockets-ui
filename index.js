@@ -3,6 +3,8 @@ import { startWebSocketServer } from "./src/ws/wsock.ts";
 
 const HTTP_PORT = 8181;
 
-console.log(`Start static http server on the ${HTTP_PORT} port!`);
-httpServer.listen(HTTP_PORT, "localhost");
-export const wsServer = startWebSocketServer();
+httpServer.listen(HTTP_PORT, "localhost", () => {
+    console.log(`Start static http server on the ${HTTP_PORT} port!`);
+    startWebSocketServer();
+});
+
