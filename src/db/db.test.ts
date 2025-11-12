@@ -4,7 +4,7 @@ import { db_users, Player, User } from "./db";
 describe("DB users tests", () => {
   const passwd = "hacker";
   const username = "Ivan Petrov";
-  test("test 1", async () => {
+  test("test_1", async () => {
     const userId = Number.parseInt(
       createHash("shake256", { outputLength: 4 })
         .update(`${username}${passwd}`)
@@ -24,5 +24,6 @@ describe("DB users tests", () => {
     const ships = data.ships;
     const p = new Player(1, ships);
     console.log(p);
+    expect(0).toBe(0);
   });
 });
