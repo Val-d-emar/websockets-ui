@@ -1,5 +1,8 @@
 # dependencies
 /node_modules
+/build
+score.md
+nohup.out
 
 # System Files
 .DS_Store
@@ -11,6 +14,7 @@ Thumbs.db
 .idea/
 *.PEM
 .vscode/
-
+*.code-workspace
 # Logs
 npm-debug.log
+.env

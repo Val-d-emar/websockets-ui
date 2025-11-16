@@ -1,21 +1,50 @@
 {
-    "name": "ws_task",
-    "version": "1.0.0",
-    "description": "Template for the WebSocket remote control task",
-    "main": "index.js",
-    "type": "module",
-    "scripts": {
-        "start": "node ./index.js",
-        "start:dev": "nodemon ./index.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "author": "Andrei Auchynnikau",
-    "keywords": [],
-    "license": "ISC",
-    "devDependencies": {
-        "nodemon": "^2.0.16"
-    },
-    "dependencies": {
-        "ws": "^8.8.0"
-    }
+  "name": "ws_task",
+  "version": "2.0.0",
+  "description": "Template for the WebSocket remote control task",
+  "main": "index.js",
+  "engines": {
+    "node": ">=24.10.0"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "npx tsc",
+    "start": "npx tsx ./index.js",
+    "start:dev": "nodemon ./index.js",
+    "test": "jest --silent",
+    "test:verbose": "jest",
+    "format": "prettier --check .",
+    "lint": "eslint --stats .",
+    "format:fix": "prettier --write .",
+    "lint:fix": "eslint . --fix"
+  },
+  "author": "Andrei Auchynnikau",
+  "keywords": [],
+  "license": "ISC",
+  "devDependencies": {
+    "@jest/globals": "^30.2.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.10.0",
+    "@types/ws": "^8.18.1",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.2.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jest": "^29.1.0",
+    "globals": "^16.5.0",
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.11",
+    "prettier": "^3.6.2",
+    "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "ws": "^8.18.3"
+  },
+  "dependencies": {
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
+    "ws": "^8.18.3"
+  }
 }
