@@ -12,6 +12,7 @@ import {
   Winner,
 } from "../db/db.ts";
 import { WebSocketLive } from "../ws/wsock";
+import "dotenv/config";
 
 export const reg_user = (
   username: string,
@@ -440,15 +441,27 @@ export const attack = (data: object, sockets: Map<number, WebSocketLive>) => {
             player.field[y][x] += 100;
           } else if (point >= 100 && point < 199) {
             // already shotted
+            if (process.env.GAME_BEHAVIOR_ATTACK_ONCE === "true") {
+              turn(gameId, sockets, false);
+              return true;
+            }
             attackXY(x, y, game, sockets, "shot", indexPlayer);
             shot = "miss";
           } else if (point >= 200) {
             // already killed
+            if (process.env.GAME_BEHAVIOR_ATTACK_ONCE === "true") {
+              turn(gameId, sockets, false);
+              return true;
+            }
             attackXY(x, y, game, sockets, "killed", indexPlayer);
             shot = "miss";
           } else if (point == 199) {
             // already missed
             shot = "miss";
+            if (process.env.GAME_BEHAVIOR_ATTACK_ONCE === "true") {
+              turn(gameId, sockets, false);
+              return true;
+            }
             attackXY(x, y, game, sockets, shot, indexPlayer);
           }
           turn(gameId, sockets, shot === "miss" ? true : false);
