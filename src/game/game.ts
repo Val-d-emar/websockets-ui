@@ -96,9 +96,14 @@ export const reg_user = (
 };
 
 export const create_room = (uid: number) => {
-  const room = new Room();
+  let room = new Room();
   const user = db_users.get(uid);
   if (user !== undefined) {
+    db_rooms.get_all().forEach((r) => {
+      if (r.roomUsers.get(uid)) {
+        room = r;
+      }
+    });
     room.roomUsers.set(uid, user);
   } else {
     console.log("Oops! user is not find!");
@@ -152,7 +157,7 @@ export const update_room = (
 ) => {
   const room = db_rooms.get(rid);
   if (room === undefined) {
-    console.log("Oops! room is not find!");
+    console.log("Oops! A room is not find!");
     return "";
   }
   const user = db_users.get(uid);
@@ -216,6 +221,11 @@ export const add_users_to_room = (
   }
   const user = db_users.get(uid);
   if (user !== undefined) {
+    db_rooms.get_all().forEach((r) => {
+      if (r.roomUsers.get(uid)) {
+        db_rooms.del(r.roomId);
+      }
+    });
     room.roomUsers.set(uid, user);
   } else {
     console.log("Oops! user is not find!");
@@ -553,4 +563,43 @@ export const finish = (
     winner.wins++;
   }
   update_winners(playerId, sockets);
+};
+
+export const abort = (
+  playerId: number,
+  sockets: Map<number, WebSocketLive>,
+) => {
+  db_games.get_all().forEach((game) => {
+    if (game.players.has(playerId)) {
+      game.players.delete(playerId);
+      game.players.forEach((_, uid) => {
+        const ws = sockets.get(uid);
+        if (ws !== undefined) {
+          if (ws.readyState === WebSocketLive.OPEN) {
+            const winnerId = game.players.keys().next().value;
+            const answer = JSON.stringify({
+              type: "finish",
+              data: JSON.stringify({
+                winPlayer: winnerId,
+              }),
+              id: 0,
+            });
+            ws.send(answer);
+            const winner = db_winners.get(winnerId ?? 0);
+            if (winner !== undefined) {
+              winner.wins++;
+            }
+            update_winners(playerId, sockets);
+          }
+        }
+      });
+      del_users_rooms(playerId, sockets);
+      db_rooms.get_all().forEach((room) => {
+        if (room.roomUsers.has(playerId)) {
+          room.roomUsers.delete(playerId);
+        }
+      });
+      update_rooms(sockets);
+    }
+  });
 };

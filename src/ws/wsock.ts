@@ -3,7 +3,7 @@ import { WebSocket, WebSocketServer } from "ws";
 
 import { maxRnd } from "../db/db";
 import { parse_event } from "./events";
-import { del_users_rooms } from "../game/game";
+import { abort } from "../game/game";
 
 export class WebSocketLive extends WebSocket {
   isAlive = false;
@@ -22,11 +22,18 @@ export function startWebSocketServer() {
 
   const interval = setInterval(function ping() {
     sockets.forEach(function each(ws) {
-      if (ws.isAlive === false) return ws.terminate();
+      if (ws.isAlive === false) {
+        console.log(`Terminating dead connection for user ${ws.userId}`);
+        return ws.terminate();
+      }
       ws.isAlive = false;
       ws.ping();
     });
   }, 10000);
+
+  wss.on("close", function close() {
+    clearInterval(interval);
+  });
 
   wss.on("connection", function connection(ws: WebSocketLive, request: object) {
     ws.isAlive = true;
@@ -60,9 +67,9 @@ export function startWebSocketServer() {
     });
 
     ws.on("close", function () {
-      clearInterval(interval);
+      console.log(`User ${ws.userId} has disconnected.`);
       sockets.delete(ws.userId);
-      del_users_rooms(ws.userId, sockets);
+      abort(ws.userId, sockets);
     });
   });
   console.log("WebSocket server started on port 3000");

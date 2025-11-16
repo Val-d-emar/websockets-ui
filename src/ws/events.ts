@@ -9,6 +9,7 @@ import {
   add_ships,
   attack,
   randomAttack,
+  update_rooms,
 } from "../game/game";
 import { WebSocketLive } from "./wsock";
 import { single_play } from "../game/bot";
@@ -36,6 +37,8 @@ export const parse_event = (
         16,
       );
       reg_user(req.data.name, req.data.password, ws, sockets);
+      update_rooms(sockets);
+      update_winners(ws.userId, sockets);
       console.log(`userId is ${ws.userId}`);
       console.log(`username is ${db_users.get(ws.userId)?.name}`);
       break;
@@ -43,6 +46,7 @@ export const parse_event = (
       const room = create_room(ws.userId);
       update_room(ws.userId, room.roomId, sockets);
       update_winners(ws.userId, sockets);
+      break;
     case "add_user_to_room":
       ws.RoomId = req.data.indexRoom;
       add_users_to_room(ws.userId, ws.RoomId, sockets);
